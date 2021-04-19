@@ -4,7 +4,6 @@
 using Microsoft.MixedReality.Toolkit.Experimental.Physics;
 using Microsoft.MixedReality.Toolkit.Input;
 using Microsoft.MixedReality.Toolkit.Physics;
-using Microsoft.MixedReality.Toolkit.UI;
 using Microsoft.MixedReality.Toolkit.Utilities;
 using System;
 using System.Collections.Generic;
@@ -20,9 +19,9 @@ namespace Microsoft.MixedReality.Toolkit.UI
     /// You may also configure the script on only enable certain manipulations. The script works with
     /// both HoloLens' gesture input and immersive headset's motion controller input.
     /// </summary>
-    [HelpURL("https://microsoft.github.io/MixedRealityToolkit-Unity/Documentation/README_ObjectManipulator.html")]
+    [HelpURL("https://docs.microsoft.com/windows/mixed-reality/mrtk-unity/features/ux-building-blocks/object-manipulator")]
     [RequireComponent(typeof(ConstraintManager))]
-    public class ObjectManipulator : MonoBehaviour, IMixedRealityPointerHandler, IMixedRealityFocusChangedHandler
+    public class ObjectManipulator : MonoBehaviour, IMixedRealityPointerHandler, IMixedRealityFocusChangedHandler, IMixedRealitySourcePoseHandler
     {
         #region Public Enums
 
@@ -126,9 +125,9 @@ namespace Microsoft.MixedReality.Toolkit.UI
         /// Whether physics forces are used to move the object when performing near manipulations.
         /// </summary>
         /// <remarks>
-        /// Setting this to <c>false</c> will make the object feel more directly connected to the
+        /// <para>Setting this to <c>false</c> will make the object feel more directly connected to the
         /// users hand. Setting this to <c>true</c> will honor the mass and inertia of the object,
-        /// but may feel as though the object is connected through a spring. The default is <c>false</c>.
+        /// but may feel as though the object is connected through a spring. The default is <c>false</c>.</para>
         /// </remarks>
         public bool UseForcesForNearManipulation
         {
@@ -204,14 +203,14 @@ namespace Microsoft.MixedReality.Toolkit.UI
         }
 
         [SerializeField]
-        [Tooltip("Frame-rate independent smoothing for near interactions. Near smoothing is disabled by default because the effect may be perceived as being 'disconnected' from the hand.")]
-        private bool smoothingNear = false;
+        [Tooltip("Frame-rate independent smoothing for near interactions. Note that enabling near smoothing may be perceived as being 'disconnected' from the hand.")]
+        private bool smoothingNear = true;
 
         /// <summary>
         /// Whether to enable frame-rate independent smoothing for near interactions.
         /// </summary>
         /// <remarks>
-        /// Near smoothing is disabled by default because the effect may be perceived as being 'disconnected' from the hand.
+        /// Note that enabling near smoothing may be perceived as being 'disconnected' from the hand.
         /// </remarks>
         public bool SmoothingNear
         {
@@ -259,6 +258,44 @@ namespace Microsoft.MixedReality.Toolkit.UI
         {
             get => scaleLerpTime;
             set => scaleLerpTime = value;
+        }
+
+        [SerializeField]
+        [Tooltip("Enable or disable constraint support of this component. When enabled transform " +
+            "changes will be post processed by the linked constraint manager.")]
+        private bool enableConstraints = true;
+        /// <summary>
+        /// Enable or disable constraint support of this component. When enabled, transform
+        /// changes will be post processed by the linked constraint manager.
+        /// </summary>
+        public bool EnableConstraints
+        {
+            get => enableConstraints;
+            set => enableConstraints = value;
+        }
+
+        [SerializeField]
+        [Tooltip("Constraint manager slot to enable constraints when manipulating the object.")]
+        private ConstraintManager constraintsManager;
+        /// <summary>
+        /// Constraint manager slot to enable constraints when manipulating the object.
+        /// </summary>
+        public ConstraintManager ConstraintsManager
+        {
+            get => constraintsManager;
+            set => constraintsManager = value;
+        }
+
+        [SerializeField]
+        [Tooltip("Elastics Manager slot to enable elastics simulation when manipulating the object.")]
+        private ElasticsManager elasticsManager;
+        /// <summary>
+        /// Elastics Manager slot to enable elastics simulation when manipulating the object.
+        /// </summary>
+        public ElasticsManager ElasticsManager
+        {
+            get => elasticsManager;
+            set => elasticsManager = value;
         }
 
         #endregion Serialized Fields
@@ -317,112 +354,13 @@ namespace Microsoft.MixedReality.Toolkit.UI
             set => onHoverExited = value;
         }
 
-        [Header("Elastic")]
-        [SerializeField]
-        [Tooltip("Reference to the ScriptableObject which holds the elastic system configuration for translation manipulation.")]
-        private ElasticConfiguration translationElasticConfigurationObject = null;
-
-        /// <summary>
-        /// Reference to the ScriptableObject which holds the elastic system configuration for translation manipulation.
-        /// </summary>
-        public ElasticConfiguration TranslationElasticConfigurationObject
-        {
-            get => translationElasticConfigurationObject;
-            set => translationElasticConfigurationObject = value;
-        }
-
-        [SerializeField]
-        [Tooltip("Reference to the ScriptableObject which holds the elastic system configuration for rotation manipulation.")]
-        private ElasticConfiguration rotationElasticConfigurationObject = null;
-
-        /// <summary>
-        /// Reference to the ScriptableObject which holds the elastic system configuration for rotation manipulation.
-        /// </summary>
-        public ElasticConfiguration RotationElasticConfigurationObject
-        {
-            get => rotationElasticConfigurationObject;
-            set => rotationElasticConfigurationObject = value;
-        }
-
-        [SerializeField]
-        [Tooltip("Reference to the ScriptableObject which holds the elastic system configuration for scale manipulation.")]
-        private ElasticConfiguration scaleElasticConfigurationObject = null;
-
-        /// <summary>
-        /// Reference to the ScriptableObject which holds the elastic system configuration for scale manipulation.
-        /// </summary>
-        public ElasticConfiguration ScaleElasticConfigurationObject
-        {
-            get => scaleElasticConfigurationObject;
-            set => scaleElasticConfigurationObject = value;
-        }
-
-        [SerializeField]
-        [Tooltip("Extent of the translation elastic.")]
-        private VolumeElasticExtent translationElasticExtent;
-
-        /// <summary>
-        /// Extent of the translation elastic.
-        /// </summary>
-        public VolumeElasticExtent TranslationElasticExtent
-        {
-            get => translationElasticExtent;
-            set => translationElasticExtent = value;
-        }
-
-        [SerializeField]
-        [Tooltip("Extent of the rotation elastic.")]
-        private QuaternionElasticExtent rotationElasticExtent;
-
-        /// <summary>
-        /// Extent of the rotation elastic.
-        /// </summary>
-        public QuaternionElasticExtent RotationElasticExtent
-        {
-            get => rotationElasticExtent;
-            set => rotationElasticExtent = value;
-        }
-
-        [SerializeField]
-        [Tooltip("Extent of the scale elastic.")]
-        private VolumeElasticExtent scaleElasticExtent;
-
-        /// <summary>
-        /// Extent of the scale elastic.
-        /// </summary>
-        public VolumeElasticExtent ScaleElasticExtent
-        {
-            get => scaleElasticExtent;
-            set => scaleElasticExtent = value;
-        }
-
-        [SerializeField]
-        [Tooltip("Indication of which manipulation types use elastic feedback.")]
-        private TransformFlags elasticTypes = 0; // Default to none enabled.
-
-        /// <summary>
-        /// Indication of which manipulation types use elastic feedback.
-        /// </summary>
-        public TransformFlags ElasticTypes
-        {
-            get => elasticTypes;
-            set => elasticTypes = value;
-        }
-        #endregion
+        #endregion Event Handlers
 
         #region Private Properties
 
         private ManipulationMoveLogic moveLogic;
         private TwoHandScaleLogic scaleLogic;
         private TwoHandRotateLogic rotateLogic;
-
-        private IElasticSystem<Vector3> translationElastic;
-        private IElasticSystem<Quaternion> rotationElastic;
-        private IElasticSystem<Vector3> scaleElastic;
-
-        // Magnitude of the velocity at which the elastic systems will
-        // cease being simulated (if enabled) and the object will stop updating/moving.
-        private const float elasticVelocityThreshold = 0.001f;
 
         /// <summary>
         /// Holds the pointer and the initial intersection point of the pointer ray
@@ -455,12 +393,13 @@ namespace Microsoft.MixedReality.Toolkit.UI
         private bool wasGravity = false;
         private bool wasKinematic = false;
 
-        private ConstraintManager constraints;
-
         private bool IsOneHandedManipulationEnabled => manipulationType.HasFlag(ManipulationHandFlags.OneHanded) && pointerIdToPointerMap.Count == 1;
         private bool IsTwoHandedManipulationEnabled => manipulationType.HasFlag(ManipulationHandFlags.TwoHanded) && pointerIdToPointerMap.Count > 1;
 
-        #endregion
+        private Quaternion leftHandRotation;
+        private Quaternion rightHandRotation;
+
+        #endregion Private Properties
 
         #region MonoBehaviour Functions
 
@@ -470,36 +409,30 @@ namespace Microsoft.MixedReality.Toolkit.UI
             rotateLogic = new TwoHandRotateLogic();
             scaleLogic = new TwoHandScaleLogic();
 
-            InitializeElastics();
+            if (elasticsManager)
+            {
+                elasticsManager.InitializeElastics(HostTransform);
+            }
         }
         private void Start()
         {
             rigidBody = HostTransform.GetComponent<Rigidbody>();
-            constraints = gameObject.EnsureComponent<ConstraintManager>();
-        }
-        private void Update()
-        {
-            // If the user is not actively interacting with the object,
-            // we let the elastic systems continue simulating, to allow
-            // the object to naturally come to rest.
-            if (!isManipulationStarted)
+            if (constraintsManager == null && EnableConstraints)
             {
-                if (elasticTypes.HasFlag(TransformFlags.Move) && translationElastic != null && translationElastic.GetCurrentVelocity().magnitude > elasticVelocityThreshold)
-                {
-                    HostTransform.position = translationElastic.ComputeIteration(HostTransform.position, Time.deltaTime);
-                }
-                if (elasticTypes.HasFlag(TransformFlags.Rotate) && rotationElastic != null && rotationElastic.GetCurrentVelocity().eulerAngles.magnitude > elasticVelocityThreshold)
-                {
-                    HostTransform.rotation = rotationElastic.ComputeIteration(HostTransform.rotation, Time.deltaTime);
-                }
-                if (elasticTypes.HasFlag(TransformFlags.Scale) && scaleElastic != null && scaleElastic.GetCurrentVelocity().magnitude > elasticVelocityThreshold)
-                {
-                    HostTransform.localScale = scaleElastic.ComputeIteration(HostTransform.localScale, Time.deltaTime);
-                }
+                constraintsManager = gameObject.EnsureComponent<ConstraintManager>();
+            }
+
+            // Get child objects with NearInteractionGrabbable attached
+            var children = GetComponentsInChildren<NearInteractionGrabbable>();
+
+            if (children.Length == 0)
+            {
+                Debug.Log($"Near interactions are not enabled for {gameObject.name}. To enable near interactions, add a " +
+                    $"{nameof(NearInteractionGrabbable)} component to {gameObject.name} or to a child object of {gameObject.name} that contains a collider.");
             }
         }
 
-        #endregion MonoBehaviour Functions
+        #endregion
 
         #region Private Methods
 
@@ -599,31 +532,6 @@ namespace Microsoft.MixedReality.Toolkit.UI
             return false;
         }
 
-        private void InitializeElastics()
-        {
-            if (elasticTypes.HasFlag(TransformFlags.Move))
-            {
-                translationElastic = new VolumeElasticSystem(HostTransform.position,
-                                                             translationElastic?.GetCurrentVelocity() ?? Vector3.zero,
-                                                             translationElasticExtent,
-                                                             translationElasticConfigurationObject.ElasticProperties);
-            }
-            if (elasticTypes.HasFlag(TransformFlags.Rotate))
-            {
-                rotationElastic = new QuaternionElasticSystem(HostTransform.rotation,
-                                                              rotationElastic?.GetCurrentVelocity() ?? Quaternion.identity,
-                                                              rotationElasticExtent,
-                                                              rotationElasticConfigurationObject.ElasticProperties);
-            }
-            if (elasticTypes.HasFlag(TransformFlags.Scale))
-            {
-                scaleElastic = new VolumeElasticSystem(HostTransform.localScale,
-                                                       scaleElastic?.GetCurrentVelocity() ?? Vector3.zero,
-                                                       scaleElasticExtent,
-                                                       scaleElasticConfigurationObject.ElasticProperties);
-            }
-        }
-
         #endregion Private Methods
 
         #region Public Methods
@@ -676,7 +584,10 @@ namespace Microsoft.MixedReality.Toolkit.UI
                     pointerIdToPointerMap.Add(id, new PointerData(eventData.Pointer, eventData.Pointer.Result.Details.Point));
 
                     // Re-initialize elastic systems.
-                    InitializeElastics();
+                    if (elasticsManager)
+                    {
+                        elasticsManager.InitializeElastics(HostTransform);
+                    }
 
                     // Call manipulation started handlers
                     if (IsTwoHandedManipulationEnabled)
@@ -790,12 +701,18 @@ namespace Microsoft.MixedReality.Toolkit.UI
             if (twoHandedManipulationType.HasFlag(TransformFlags.Scale))
             {
                 targetTransform.Scale = scaleLogic.UpdateMap(handPositionArray);
-                constraints.ApplyScaleConstraints(ref targetTransform, false, IsNearManipulation());
+                if (EnableConstraints && constraintsManager != null)
+                {
+                    constraintsManager.ApplyScaleConstraints(ref targetTransform, false, IsNearManipulation());
+                }
             }
             if (twoHandedManipulationType.HasFlag(TransformFlags.Rotate))
             {
                 targetTransform.Rotation = rotateLogic.Update(handPositionArray, targetTransform.Rotation);
-                constraints.ApplyRotationConstraints(ref targetTransform, false, IsNearManipulation());
+                if (EnableConstraints && constraintsManager != null)
+                {
+                    constraintsManager.ApplyRotationConstraints(ref targetTransform, false, IsNearManipulation());
+                }
             }
             if (twoHandedManipulationType.HasFlag(TransformFlags.Move))
             {
@@ -804,7 +721,10 @@ namespace Microsoft.MixedReality.Toolkit.UI
                 // look-rotation-based pointer pose is used.
                 MixedRealityPose pose = IsNearManipulation() ? new MixedRealityPose(GetPointersGrabPoint()) : GetPointersPose();
                 targetTransform.Position = moveLogic.Update(pose, targetTransform.Rotation, targetTransform.Scale, true);
-                constraints.ApplyTranslationConstraints(ref targetTransform, false, IsNearManipulation());
+                if (EnableConstraints && constraintsManager != null)
+                {
+                    constraintsManager.ApplyTranslationConstraints(ref targetTransform, false, IsNearManipulation());
+                }
             }
 
             ApplyTargetTransform(targetTransform);
@@ -835,19 +755,28 @@ namespace Microsoft.MixedReality.Toolkit.UI
 
             var targetTransform = new MixedRealityTransform(HostTransform.position, HostTransform.rotation, HostTransform.localScale);
 
-            constraints.ApplyScaleConstraints(ref targetTransform, true, IsNearManipulation());
+            if (EnableConstraints && constraintsManager != null)
+            {
+                constraintsManager.ApplyScaleConstraints(ref targetTransform, true, IsNearManipulation());
+            }
 
             Quaternion gripRotation;
             TryGetGripRotation(pointer, out gripRotation);
             targetTransform.Rotation = gripRotation * objectToGripRotation;
 
-            constraints.ApplyRotationConstraints(ref targetTransform, true, IsNearManipulation());
+            if (EnableConstraints && constraintsManager != null)
+            {
+                constraintsManager.ApplyRotationConstraints(ref targetTransform, true, IsNearManipulation());
+            }
 
             RotateInOneHandType rotateInOneHandType = isNearManipulation ? oneHandRotationModeNear : oneHandRotationModeFar;
             MixedRealityPose pointerPose = new MixedRealityPose(pointer.Position, pointer.Rotation);
             targetTransform.Position = moveLogic.Update(pointerPose, targetTransform.Rotation, targetTransform.Scale, rotateInOneHandType != RotateInOneHandType.RotateAboutObjectCenter);
 
-            constraints.ApplyTranslationConstraints(ref targetTransform, true, IsNearManipulation());
+            if (EnableConstraints && constraintsManager != null)
+            {
+                constraintsManager.ApplyTranslationConstraints(ref targetTransform, true, IsNearManipulation());
+            }
 
             ApplyTargetTransform(targetTransform);
         }
@@ -881,7 +810,14 @@ namespace Microsoft.MixedReality.Toolkit.UI
                 rigidBody.isKinematic = false;
             }
 
-            constraints.Initialize(new MixedRealityTransform(HostTransform));
+            if (EnableConstraints && constraintsManager != null)
+            {
+                constraintsManager.Initialize(new MixedRealityTransform(HostTransform));
+            }
+            if (elasticsManager != null)
+            {
+                elasticsManager.EnableElasticsUpdate = false;
+            }
         }
 
         private void HandleManipulationEnded(Vector3 pointerGrabPoint, Vector3 pointerVelocity, Vector3 pointerAnglularVelocity)
@@ -902,6 +838,10 @@ namespace Microsoft.MixedReality.Toolkit.UI
             }
 
             ReleaseRigidBody(pointerVelocity, pointerAnglularVelocity);
+            if (elasticsManager != null)
+            {
+                elasticsManager.EnableElasticsUpdate = true;
+            }
         }
 
         #endregion Private Event Handlers
@@ -919,27 +859,21 @@ namespace Microsoft.MixedReality.Toolkit.UI
         {
             if (rigidBody == null)
             {
-                if (elasticTypes.HasFlag(TransformFlags.Move))
+                TransformFlags transformUpdated = 0;
+                if (elasticsManager != null)
                 {
-                    HostTransform.position = translationElastic.ComputeIteration(targetTransform.Position, Time.deltaTime);
+                    transformUpdated = elasticsManager.ApplyTargetTransform(targetTransform);
                 }
-                else
+
+                if (!transformUpdated.HasFlag(TransformFlags.Move))
                 {
                     HostTransform.position = isSmoothing ? Smoothing.SmoothTo(HostTransform.position, targetTransform.Position, moveLerpTime, Time.deltaTime) : targetTransform.Position;
                 }
-                if (elasticTypes.HasFlag(TransformFlags.Rotate))
-                {
-                    HostTransform.rotation = rotationElastic.ComputeIteration(targetTransform.Rotation, Time.deltaTime);
-                }
-                else
+                if (!transformUpdated.HasFlag(TransformFlags.Rotate))
                 {
                     HostTransform.rotation = isSmoothing ? Smoothing.SmoothTo(HostTransform.rotation, targetTransform.Rotation, rotateLerpTime, Time.deltaTime) : targetTransform.Rotation;
                 }
-                if (elasticTypes.HasFlag(TransformFlags.Scale))
-                {
-                    HostTransform.localScale = scaleElastic.ComputeIteration(targetTransform.Scale, Time.deltaTime);
-                }
-                else
+                if (!transformUpdated.HasFlag(TransformFlags.Scale))
                 {
                     HostTransform.localScale = isSmoothing ? Smoothing.SmoothTo(HostTransform.localScale, targetTransform.Scale, scaleLerpTime, Time.deltaTime) : targetTransform.Scale;
                 }
@@ -971,7 +905,7 @@ namespace Microsoft.MixedReality.Toolkit.UI
 
                     var relativeRotation = targetTransform.Rotation * Quaternion.Inverse(HostTransform.rotation);
                     relativeRotation.ToAngleAxis(out float angle, out Vector3 axis);
-                    
+
                     if (axis.IsValidVector())
                     {
                         if (angle > 180f)
@@ -1061,17 +995,65 @@ namespace Microsoft.MixedReality.Toolkit.UI
 
         private bool TryGetGripRotation(IMixedRealityPointer pointer, out Quaternion rotation)
         {
-            for (int i = 0; i < pointer.Controller.Interactions.Length; i++)
-            {
-                if (pointer.Controller.Interactions[i].InputType == DeviceInputType.SpatialGrip)
-                {
-                    rotation = pointer.Controller.Interactions[i].RotationData;
-                    return true;
-                }
-            }
             rotation = Quaternion.identity;
-            return false;
+            switch (pointer.Controller?.ControllerHandedness)
+            {
+                case Handedness.Left:
+                    rotation = leftHandRotation;
+                    break;
+                case Handedness.Right:
+                    rotation = rightHandRotation;
+                    break;
+                default:
+                    return false;
+            }
+            return true;
         }
+
+        #endregion
+
+        #region Source Pose Handler Implementation
+        /// <summary>
+        /// Raised when the source pose tracking state is changed.
+        /// </summary>
+        public void OnSourcePoseChanged(SourcePoseEventData<TrackingState> eventData) { }
+
+        /// <summary>
+        /// Raised when the source position is changed.
+        /// </summary>
+        public void OnSourcePoseChanged(SourcePoseEventData<Vector2> eventData) { }
+
+        /// <summary>
+        /// Raised when the source position is changed.
+        /// </summary>
+        public void OnSourcePoseChanged(SourcePoseEventData<Vector3> eventData) { }
+
+        /// <summary>
+        /// Raised when the source rotation is changed.
+        /// </summary>
+        public void OnSourcePoseChanged(SourcePoseEventData<Quaternion> eventData) { }
+
+        /// <summary>
+        /// Raised when the source pose is changed.
+        /// </summary>
+        public void OnSourcePoseChanged(SourcePoseEventData<MixedRealityPose> eventData)
+        {
+            switch (eventData.Controller?.ControllerHandedness)
+            {
+                case Handedness.Left:
+                    leftHandRotation = eventData.SourceData.Rotation;
+                    break;
+                case Handedness.Right:
+                    rightHandRotation = eventData.SourceData.Rotation;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        public void OnSourceDetected(SourceStateEventData eventData) { }
+
+        public void OnSourceLost(SourceStateEventData eventData) { }
 
         #endregion
     }
